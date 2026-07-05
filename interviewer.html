@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Interviewer Portal — Nash & Co.</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --gold:#f0a500;--gold2:#f7c84a;--gold-pale:#fdf6e0;--gold-border:#c98d00;
+  --dark:#222;--dark2:#333;--blue:#1a2a4a;--blue2:#2a3a5a;--blue-light:#aac4f0;
+  --white:#fff;--off:#fafaf8;--g100:#f4f3ef;--g500:#8a887f;--g700:#4a4840;
+  --text:#111;--border:#e0ddd5;--red:#c0392b;--green:#1a7a40;--r:6px;
+}
+body{
+  font-family:'Outfit',sans-serif;background:#2b2b2b;color:var(--text);min-height:100vh;
+  animation: bodyFadeIn 0.8s ease forwards;
+}
+
+/* ── CUSTOM SCROLLBAR & NOISE OVERLAY ── */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--dark); }
+::-webkit-scrollbar-thumb { background: var(--gold); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gold2); }
+
+body::after {
+  content: ""; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 9999;
+}
+
+@keyframes bodyFadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ── CUSTOM CURSOR ── */
+.custom-cursor {
+  position: fixed; width: 24px; height: 24px; border: 1.5px solid var(--gold);
+  border-radius: 50%; pointer-events: none; z-index: 100000;
+  transform: translate(-50%, -50%); transition: width 0.2s, height 0.2s, background-color 0.2s, opacity 0.2s;
+  display: none; opacity: 0;
+}
+
+/* LOGIN SCREEN */
+.login-screen{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  background:var(--dark);position:relative;overflow:hidden;
+}
+.login-screen::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse 60% 60% at 50% 50%,rgba(240,165,0,0.06) 0%,transparent 70%);
+}
+.login-box{
+  background:rgba(255,255,255,0.03);border:1px solid rgba(240,165,0,0.15);
+  border-radius:12px;padding:3rem;width:100%;max-width:420px;
+  position:relative;z-index:1;text-align:center;
+  backdrop-filter:blur(20px);
+}
+.login-logo { width:70px; height:70px; border-radius:50%; margin:0 auto 1.5rem; object-fit: cover; }
+.login-box h1{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:300;color:var(--white);}
+.login-box p{font-size:13px;color:#666;margin-top:0.5rem;margin-bottom:2rem;}
+.login-field{display:flex;flex-direction:column;gap:6px;margin-bottom:1.2rem;text-align:left;}
+.login-field label{font-size:12px;font-weight:500;color:#888;letter-spacing:0.04em;}
+.login-field input{
+  border:1px solid rgba(255,255,255,0.1);border-radius:var(--r);
+  padding:11px 14px;font-size:14px;font-family:'Outfit',sans-serif;
+  color:var(--white);background:rgba(255,255,255,0.05);outline:none;
+  transition:all 0.2s;
+}
+.login-field input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(240,165,0,0.12);}
+.login-btn{
+  width:100%;padding:12px;background:var(--gold);color:var(--dark);
+  border:none;border-radius:var(--r);font-size:13px;font-weight:600;
+  letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;
+  font-family:'Outfit',sans-serif;transition:all 0.2s;margin-top:0.5rem;
+}
+.login-btn:hover{background:var(--gold2);}
+.login-error{font-size:13px;color:#e74c3c;margin-top:1rem;display:none;}
+
+/* PORTAL (hidden until login) */
+.portal{display:none;}
+
+/* NAV */
+nav{
+  background:rgba(34,34,34,0.98);backdrop-filter:blur(12px);
+  border-bottom:1px solid rgba(240,165,0,0.15);
+  position:sticky;top:0;z-index:100;
+}
+.nav-inner {
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 2rem;height:68px; max-width: 1400px; margin: 0 auto; width: 100%;
+}
+.nav-logo{display:flex;align-items:center;gap:10px;text-decoration:none;}
+.logo-img { width:34px; height:34px; border-radius:50%; object-fit: cover;}
+.nav-logo span{font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--white);}
+.nav-right{display:flex;align-items:center;gap:1.5rem;}
+.nav-badge{font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--blue-light);background:rgba(26,42,74,0.5);padding:5px 12px;border-radius:20px;border:1px solid #2a3a5a;}
+.nav-logout{font-size:12px;color:#666;cursor:pointer;text-decoration:none;transition:color 0.2s;}
+.nav-logout:hover{color:var(--gold);}
+
+/* PAGE HEADER */
+.page-header{background:var(--dark2);padding:2.5rem 2rem;border-bottom:2px solid var(--gold);}
+.page-header-inner { max-width: 1000px; margin: 0 auto; }
+.page-header .tag{font-size:11px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:var(--blue-light);}
+.page-header h1{font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:300;color:var(--white);margin-top:0.4rem;}
+
+/* WRAP */
+.wrap{max-width:1000px;margin:0 auto;padding:2.5rem 1.5rem; position: relative; z-index: 2;}
+
+/* TABS */
+.tab-strip{
+  display:flex;background:var(--dark2);border-radius:8px;
+  border:1px solid #3a3a3a;margin-bottom:1.5rem;overflow:hidden;
+  position:relative;z-index:1;
+}
+.tab-btn{
+  flex:1;padding:12px 8px;border:none;background:transparent;
+  font-size:12px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;
+  color:#888;cursor:pointer;font-family:'Outfit',sans-serif;
+  border-bottom:2px solid transparent;transition:all 0.18s;
+}
+.tab-btn:hover{color:#ccc;}
+.tab-btn.active{color:var(--blue-light);border-bottom-color:var(--blue-light); background: rgba(255,255,255,0.02);}
+
+/* CARD */
+.card{background:var(--white);border-radius:10px;border:1px solid #3a3a3a;padding:2rem;position:relative;z-index:1;}
+
+/* STATUS */
+.status-bar{display:none;align-items:center;gap:10px;padding:11px 16px;border-radius:var(--r);margin-bottom:1.4rem;font-size:13px;font-weight:500;}
+.status-bar.success{display:flex;background:#eafaf1;border:1px solid #a9dfbf;color:var(--green);}
+.status-bar.error{display:flex;background:#fdf3f3;border:1px solid #f5b7b1;color:var(--red);}
+.status-bar.loading{display:flex;background:#fffbee;border:1px solid #f0d080;color:#7a5800;}
+.status-bar.info{display:flex;background:#eaf1fd;border:1px solid #aac4f0;color:var(--blue);}
+@keyframes spin{to{transform:rotate(360deg);}}
+.spinner{width:15px;height:15px;border:2px solid #f5d98a;border-top-color:#7a5800;border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0;}
+
+/* PANELS */
+.panel{display:none;} .panel.active{display:block; animation: slideIn 0.4s ease;}
+@keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* S-HEAD */
+.s-head{display:flex;align-items:center;gap:10px;margin-bottom:1.2rem;padding-bottom:8px;border-bottom:1.5px solid var(--border);}
+.s-num{width:26px;height:26px;background:var(--blue);color:var(--blue-light);border-radius:50%;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.s-title{font-size:12px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--dark);}
+.s-accent{flex:1;height:1px;background:linear-gradient(to right,rgba(170,196,240,0.4),transparent);}
+.s-body{margin-bottom:1.5rem;}
+
+/* GRID */
+.g{display:grid;gap:14px;} .g2{grid-template-columns:1fr 1fr;} .g1{grid-template-columns:1fr;} .g3{grid-template-columns:1fr 1fr 1fr;} .sp2{grid-column:span 2;}
+@media (max-width: 768px) { .g2, .g3 { grid-template-columns: 1fr; } .sp2 { grid-column: span 1; } }
+
+/* FIELDS */
+.field{display:flex;flex-direction:column;gap:5px;}
+.field label{font-size:12px;font-weight:500;color:var(--g700);letter-spacing:0.02em;}
+.req{color:#5580c8;margin-left:2px;}
+.field input,.field select,.field textarea{
+  border:1px solid var(--border);border-radius:var(--r);padding:9px 12px;
+  font-size:14px;font-family:'Outfit',sans-serif;color:var(--text);
+  background:var(--off);outline:none;width:100%;
+  transition:border-color 0.15s,box-shadow 0.15s;
+}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:#5580c8;box-shadow:0 0 0 3px rgba(85,128,200,0.12);}
+.field input[readonly]{background:#f4f3ef;color:#888;cursor:not-allowed;}
+.field textarea{resize:vertical;min-height:80px;line-height:1.6;}
+.hint{font-size:11px;color:var(--g500);margin-top:2px;}
+
+/* PILLS */
+.cg{display:flex;flex-wrap:wrap;gap:7px;margin-top:3px;}
+.cp{display:flex;align-items:center;gap:6px;padding:6px 14px;border:1px solid var(--border);border-radius:20px;cursor:pointer;font-size:13px;color:var(--g700);background:var(--off);transition:all 0.15s;user-select:none;}
+.cp input{display:none;}
+.cp:hover{border-color:#5580c8;color:var(--dark);background:#eaf1fd;}
+.cp.sel{background:var(--blue);border-color:#5580c8;color:var(--blue-light);font-weight:500;}
+
+/* STARS */
+.star-row{display:flex;gap:6px;margin-top:4px;}
+.star-btn{width:40px;height:40px;border:1px solid var(--border);border-radius:var(--r);background:var(--off);font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;color:var(--border);}
+.star-btn:hover,.star-btn.lit{color:var(--gold);border-color:var(--gold);background:var(--gold-pale);}
+.rating-lbl{font-size:12px;color:var(--g500);margin-top:5px;}
+
+/* NAV ROW */
+.nav-row{display:flex;align-items:center;justify-content:space-between;padding-top:1.4rem;border-top:1px solid var(--border);margin-top:0.5rem;gap:10px;flex-wrap:wrap;}
+.btn-row{display:flex;gap:8px;}
+.sheet-link{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--g500);text-decoration:none;padding:8px 13px;border:1px solid var(--border);border-radius:var(--r);transition:all 0.15s;}
+.sheet-link:hover{border-color:var(--gold);color:var(--dark);background:var(--gold-pale);}
+.btn{padding:9px 18px;border-radius:var(--r);font-family:'Outfit',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all 0.15s;border:1px solid var(--border);background:var(--white);color:var(--g700);}
+.btn:hover{background:var(--g100);}
+.btn:disabled{opacity:0.4;cursor:not-allowed;}
+.btn-blue{background:var(--blue);color:var(--blue-light);border-color:var(--blue2);font-weight:600;}
+.btn-blue:hover{background:var(--blue2);}
+.btn-gold{background:var(--gold);color:var(--dark);border-color:var(--gold-border);font-weight:600;}
+.btn-gold:hover{background:var(--gold2);}
+.btn-outline{background:transparent;}
+
+/* NEW RESUME BUTTON */
+.btn-resume {
+  display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px;
+  background: transparent; border: 1px solid var(--gold); color: var(--gold);
+  border-radius: 4px; text-decoration: none; font-size: 12px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.05em; transition: all 0.2s; margin-top: 15px;
+}
+.btn-resume:hover { background: var(--gold); color: var(--dark); }
+
+/* ID BANNER */
+.id-banner{background:var(--dark);border-radius:var(--r);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:1.4rem;}
+.id-banner span{font-size:11px;color:#666;letter-spacing:0.08em;text-transform:uppercase;}
+.id-banner strong{font-family:'Cormorant Garamond',serif;font-size:24px;color:var(--gold);}
+.id-badge{font-size:12px;padding:4px 12px;border-radius:20px;background:rgba(170,196,240,0.1);color:var(--blue-light);}
+
+/* DASHBOARD TABLE */
+.dash-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem;}
+.dash-header h3{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:300;}
+.dash-search{
+  padding:8px 14px;border:1px solid var(--border);border-radius:var(--r);
+  font-size:13px;font-family:'Outfit',sans-serif;outline:none;width:220px;
+  transition:all 0.2s;
+}
+.dash-search:focus{border-color:#5580c8;}
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{background:var(--dark);color:var(--gold);font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;padding:10px 12px;text-align:left;}
+td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text);}
+tr:hover td{background:var(--off);}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500;}
+.badge-selected{background:#eafaf1;color:var(--green); border: 1px solid #a9dfbf;}
+.badge-rejected{background:#fdf3f3;color:var(--red); border: 1px solid #f5b7b1;}
+.badge-pending{background:#fffbee;color:#7a5800; border: 1px solid #f0d080;}
+.badge-hold{background:#eaf1fd;color:var(--blue); border: 1px solid #aac4f0;}
+.badge-short{background:#f5eafd;color:#6a1a8a; border: 1px solid #d7b4f3;}
+.empty-state{text-align:center;padding:3rem;color:var(--g500);}
+.empty-state p{margin-top:0.5rem;font-size:14px;}
+</style>
+</head>
+<body>
+
+<!-- CUSTOM CURSOR -->
+<div class="custom-cursor" id="customCursor"></div>
+
+<!-- LOGIN SCREEN -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <img src="logo.png" alt="Nash & Co. Logo" class="login-logo">
+    <h1>Interviewer Portal</h1>
+    <p>Nash &amp; Co. — Staff Access Only</p>
+    <div class="login-field">
+      <label>Username</label>
+      <input type="text" id="loginUser" placeholder="Enter username " autocomplete="off"/>
+    </div>
+    <div class="login-field">
+      <label>Password</label>
+      <input type="password" id="loginPass" placeholder="Enter password " onkeydown="if(event.key==='Enter')doLogin()"/>
+    </div>
+    <button class="login-btn" onclick="doLogin()">Sign In →</button>
+    <div class="login-error" id="loginError">⚠ Incorrect username or password.</div>
+  </div>
+</div>
+
+<!-- PORTAL -->
+<div class="portal" id="portal">
+  <nav>
+    <div class="nav-inner">
+      <a class="nav-logo" href="index.html">
+        <img src="logo.png" alt="Nash & Co." class="logo-img">
+        <span>Nash &amp; Co.</span>
+      </a>
+      <div class="nav-right">
+        <span class="nav-badge">🎙 Interviewer Portal</span>
+        <a class="nav-logout" onclick="logout()">Sign Out</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="page-header">
+    <div class="page-header-inner">
+      <div class="tag">Staff Portal · Restricted Access</div>
+      <h1>Interviewer Assessment Panel</h1>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="tab-strip">
+      <button class="tab-btn active" onclick="switchTab('assess')">New Assessment</button>
+      <button class="tab-btn" onclick="switchTab('dashboard')">All Candidates</button>
+    </div>
+
+    <!-- ASSESSMENT PANEL -->
+    <div id="tabAssess" class="panel active">
+
+      <!-- STEP 1: LOAD -->
+      <div class="card" style="margin-bottom:1.5rem;" id="loadCard">
+        <div class="status-bar" id="loadStatus"></div>
+        <div class="s-head"><div class="s-num">↗</div><div class="s-title">Load Candidate</div><div class="s-accent"></div></div>
+        <div class="g g2">
+          <div class="field">
+            <label>Candidate Reference ID <span class="req">*</span></label>
+            <input type="text" id="lookupId" placeholder="e.g. NC-26-001" style="text-transform:uppercase;font-weight:600;font-size:16px;letter-spacing:0.08em;" autocomplete="off" onkeypress="if(event.key === 'Enter') loadCandidate()"/>
+            <div class="hint">Given to candidate after registration</div>
+          </div>
+          <div style="display:flex;align-items:flex-end;">
+            <button class="btn btn-blue" onclick="loadCandidate()" style="margin-bottom:0;" id="loadBtn">Load Record →</button>
+          </div>
+        </div>
+        
+        <div id="candidatePreview" style="display:none;margin-top:1.2rem;padding-top:1.2rem;border-top:1px solid var(--border);">
+          <div class="g g3" id="previewGrid"></div>
+          
+          <!-- NEW FEATURE: VIEW RESUME BUTTON -->
+          <div id="resumeContainer">
+             <a href="#" target="_blank" class="btn-resume" id="previewResumeBtn" style="display:none;">📄 View Candidate Resume</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 2: ASSESSMENT -->
+      <div class="card" id="assessCard" style="display:none;">
+        <div class="status-bar" id="assessStatus"></div>
+        <div class="id-banner" id="assessBanner">
+          <span>Candidate ID</span>
+          <strong id="assessId">—</strong>
+          <span class="id-badge" id="assessBadge">In progress</span>
+        </div>
+
+        <!-- SKILLS -->
+        <div class="s-head"><div class="s-num">A</div><div class="s-title">Skills Assessment</div><div class="s-accent"></div></div>
+        <div class="s-body">
+          <div class="g g1" style="gap:16px;">
+            <div class="field"><label>English proficiency <span class="req">*</span></label>
+              <div class="cg">
+                <label class="cp"><input type="radio" name="english" value="Basic"/><span>Basic</span></label>
+                <label class="cp"><input type="radio" name="english" value="Conversational"/><span>Conversational</span></label>
+                <label class="cp"><input type="radio" name="english" value="Fluent"/><span>Fluent</span></label>
+                <label class="cp"><input type="radio" name="english" value="Native-level"/><span>Native-level</span></label>
+              </div>
+            </div>
+            <div class="field"><label>Computer skills observed</label>
+              <div class="cg" id="skillsGroup" data-type="checkbox">
+                <label class="cp"><input type="checkbox" value="MS Word"/><span>MS Word</span></label>
+                <label class="cp"><input type="checkbox" value="MS Excel"/><span>MS Excel</span></label>
+                <label class="cp"><input type="checkbox" value="Google Sheets"/><span>Google Sheets</span></label>
+                <label class="cp"><input type="checkbox" value="CRM Software"/><span>CRM Software</span></label>
+                <label class="cp"><input type="checkbox" value="Fast Typing"/><span>Fast Typing</span></label>
+                <label class="cp"><input type="checkbox" value="Cold Calling"/><span>Cold Calling</span></label>
+                <label class="cp"><input type="checkbox" value="Email Writing"/><span>Email Writing</span></label>
+              </div>
+            </div>
+            <div class="g g3">
+              <div class="field"><label>Typing speed</label>
+                <select id="typingSpeed">
+                  <option value="">Select...</option>
+                  <option>Below 30 WPM</option><option>30 – 50 WPM</option>
+                  <option>50 – 70 WPM</option><option>70+ WPM</option>
+                </select>
+              </div>
+              <div class="field"><label>Availability</label>
+                <div class="cg">
+                  <label class="cp"><input type="radio" name="availability" value="Full-time"/><span>Full-time</span></label>
+                  <label class="cp"><input type="radio" name="availability" value="Part-time"/><span>Part-time</span></label>
+                  <label class="cp"><input type="radio" name="availability" value="Flexible"/><span>Flexible</span></label>
+                </div>
+              </div>
+              <div class="field"><label>Night shifts?</label>
+                <div class="cg">
+                  <label class="cp"><input type="radio" name="nightShift" value="Yes"/><span>Yes</span></label>
+                  <label class="cp"><input type="radio" name="nightShift" value="No"/><span>No</span></label>
+                  <label class="cp"><input type="radio" name="nightShift" value="If needed"/><span>If needed</span></label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- INTERVIEW -->
+        <div class="s-head"><div class="s-num">B</div><div class="s-title">Interview Assessment</div><div class="s-accent"></div></div>
+        <div class="s-body">
+          <div class="g g2">
+            <div class="field"><label>Interview date</label><input type="date" id="iDate"/></div>
+            <div class="field"><label>Your name</label><input type="text" id="iName" placeholder="Interviewer full name"/></div>
+            <div class="field"><label>Rating (out of 5) <span class="req">*</span></label>
+              <div class="star-row" id="starRow">
+                <button type="button" class="star-btn" data-val="1">★</button>
+                <button type="button" class="star-btn" data-val="2">★</button>
+                <button type="button" class="star-btn" data-val="3">★</button>
+                <button type="button" class="star-btn" data-val="4">★</button>
+                <button type="button" class="star-btn" data-val="5">★</button>
+              </div>
+              <div class="rating-lbl" id="ratingLbl">Click a star to rate</div>
+              <input type="hidden" id="rating"/>
+            </div>
+            <div class="field"><label>Decision <span class="req">*</span></label>
+              <select id="iStatus">
+                <option value="">Select...</option>
+                <option>Shortlisted</option>
+                <option>Selected ✓</option>
+                <option>On hold</option>
+                <option>Rejected ✗</option>
+                <option>Pending review</option>
+              </select>
+            </div>
+            <div class="field"><label>Source</label>
+              <div class="cg">
+                <label class="cp"><input type="radio" name="source" value="Walk-in"/><span>Walk-in</span></label>
+                <label class="cp"><input type="radio" name="source" value="Referral"/><span>Referral</span></label>
+                <label class="cp"><input type="radio" name="source" value="Social media"/><span>Social media</span></label>
+                <label class="cp"><input type="radio" name="source" value="Job portal"/><span>Job portal</span></label>
+              </div>
+            </div>
+            <div class="field"><label>Referred by</label><input type="text" id="iRef" placeholder="Name of referrer"/></div>
+            <div class="field sp2"><label>Notes &amp; observations <span class="req">*</span></label>
+              <textarea id="iNotes" placeholder="First impression, communication, strengths, concerns..."></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="nav-row">
+          <!-- Update the href link below if you want the "Open Sheet" button to take you directly to your sheet -->
+          <a class="sheet-link" href="#" target="_blank">📊 Open Sheet</a>
+          <div class="btn-row">
+            <button class="btn btn-gold" onclick="resetAssess()">New Candidate</button>
+            <button class="btn btn-blue" id="saveBtn" onclick="saveRecord()">Save Complete Record ↗</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="tabDashboard" class="panel">
+      <div class="card">
+        <div class="dash-header">
+          <h3>All Candidates</h3>
+          <input class="dash-search" type="text" placeholder="Search by name, ID, status..." oninput="filterTable(this.value)"/>
+        </div>
+        <div class="table-wrap">
+          <table id="candidateTable">
+            <thead>
+              <tr>
+                <th>ID</th><th>Name</th><th>Phone</th><th>Role</th>
+                <th>Rating</th><th>Status</th><th>Date</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+          <div class="empty-state" id="emptyState" style="display:none;">
+            <p style="font-size:32px;">📋</p>
+            <p>No candidates found. Complete assessments will appear here.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── YOUR FULLY AUTHORIZED GOOGLE APPS SCRIPT URL ──
+const API_URL = 'https://script.google.com/macros/s/AKfycbzVltjzGzKVqQAetokc6NM-JfmLw0wYrit70l-H2bv-oJpbINMasicw3Ma61Wl3HuB6/exec';
+
+/* ── LOCAL STORAGE FOR DASHBOARD RESULTS ONLY ── */
+const RESULTS_KEY='nc_results';
+const PASS='Sharaf@0336';
+const USER='Nash';
+
+function getResults(){ try{ return JSON.parse(localStorage.getItem(RESULTS_KEY)||'[]'); } catch(e){ return []; } }
+function saveResults(r){ localStorage.setItem(RESULTS_KEY,JSON.stringify(r)); }
+
+/* ── LOGIN LOGIC ── */
+function doLogin(){
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+  if(u === USER && p === PASS){
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('portal').style.display = 'block';
+    renderTable();
+    document.getElementById('iDate').value = new Date().toISOString().split('T')[0];
+  } else {
+    document.getElementById('loginError').style.display = 'block';
+  }
+}
+
+function logout(){
+  document.getElementById('portal').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('loginPass').value = '';
+  document.getElementById('loginError').style.display = 'none';
+}
+
+/* ── TAB SWITCHING ── */
+function switchTab(t){
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active', i===(t==='assess'?0:1)));
+  document.getElementById('tabAssess').classList.toggle('active', t==='assess');
+  document.getElementById('tabDashboard').classList.toggle('active', t==='dashboard');
+  if(t==='dashboard') renderTable();
+}
+
+/* ── UI INTERACTIONS (PILLS & STARS) ── */
+document.querySelectorAll('.cg').forEach(g => {
+  const isCheck = g.getAttribute('data-type') === 'checkbox';
+  g.addEventListener('change', (e) => {
+    if (e.target.type === 'radio') {
+      g.querySelectorAll('.cp').forEach(p => p.classList.remove('sel'));
+      e.target.closest('.cp').classList.add('sel');
+    } else if (e.target.type === 'checkbox') {
+      e.target.closest('.cp').classList.toggle('sel', e.target.checked);
+    }
+  });
+});
+
+const ratingLabels = ['','Poor','Below average','Average','Good','Excellent'];
+document.querySelectorAll('.star-btn').forEach((btn,i,all) => {
+  btn.addEventListener('click', () => {
+    const val = parseInt(btn.dataset.val);
+    document.getElementById('rating').value = val;
+    document.getElementById('ratingLbl').textContent = '★'.repeat(val) + '  ' + ratingLabels[val];
+    all.forEach((b,j) => b.classList.toggle('lit', j < val));
+  });
+});
+
+/* ── FORM HELPERS ── */
+function v(id){ const e = document.getElementById(id); return e ? e.value.trim() : ''; }
+function rVal(name){ const e = document.querySelector(`input[name="${name}"]:checked`); return e ? e.value : ''; }
+function checks(){ return Array.from(document.querySelectorAll('#skillsGroup input:checked')).map(c=>c.value).join(', ')||''; }
+function showLS(id, type, msg){
+  const b = document.getElementById(id);
+  b.className = 'status-bar ' + type;
+  b.style.display = 'flex';
+  b.innerHTML = type === 'loading' ? `<div class="spinner"></div><span>${msg}</span>` : `<span>${msg}</span>`;
+}
+
+/* ── ASSESSMENT LOGIC (USING GOOGLE API) ── */
+let currentId = '', saved = false, globalCandidateData = {};
+
+async function loadCandidate(){
+  const id = document.getElementById('lookupId').value.trim().toUpperCase();
+  const btn = document.getElementById('loadBtn');
+  if(!id) { showLS('loadStatus','error','⚠ Please enter a Reference ID.'); return; }
+  
+  showLS('loadStatus','loading','Searching database...');
+  btn.disabled = true;
+  document.getElementById('candidatePreview').style.display = 'none';
+  document.getElementById('assessCard').style.display = 'none';
+
+  try {
+    const response = await fetch(API_URL + '?id=' + id);
+    const data = await response.json();
+
+    if(data.error) { 
+      showLS('loadStatus','error',`⚠ No record found for: ${id}. Ask candidate to submit registration first.`);
+      btn.disabled = false;
+      return;
+    }
+    
+    currentId = id; 
+    saved = false;
+    globalCandidateData = data; 
+    
+    document.getElementById('saveBtn').disabled = false;
+    document.getElementById('assessId').textContent = id;
+    document.getElementById('assessBanner').style.display = 'flex';
+    document.getElementById('assessBadge').textContent = 'In progress';
+    document.getElementById('assessBadge').style.color = 'var(--blue-light)';
+    
+    const preview = [
+      ['Name', data.fullName], ['CNIC', data.cnic], ['Phone', data.phone],
+      ['Role applied', data.role], ['Qualification', data.education], ['Experience', data.experience]
+    ];
+    
+    document.getElementById('previewGrid').innerHTML = preview.map(([k,val])=>
+      `<div class="field"><label>${k}</label><input type="text" value="${val||'—'}" readonly/></div>`
+    ).join('');
+    
+    // NEW FEATURE: Handle the Resume Link
+    const resumeBtn = document.getElementById('previewResumeBtn');
+    if (data.resumeLink && data.resumeLink.startsWith('http')) {
+      resumeBtn.style.display = 'inline-flex';
+      resumeBtn.href = data.resumeLink;
+    } else {
+      resumeBtn.style.display = 'none';
+    }
+
+    document.getElementById('candidatePreview').style.display = 'block';
+    document.getElementById('assessCard').style.display = 'block';
+    showLS('loadStatus','success',`✓ Loaded: ${data.fullName}`);
+
+  } catch (error) {
+    showLS('loadStatus','error','⚠ Connection error. Could not reach the database.');
+  }
+  btn.disabled = false;
+}
+
+function saveRecord(){
+  if(saved) { showLS('assessStatus','error','Already saved.'); return; }
+  if(!v('iStatus')) { showLS('assessStatus','error','⚠ Please select a Decision.'); return; }
+  if(!v('rating')) { showLS('assessStatus','error','⚠ Please give a star rating.'); return; }
+  if(!v('iNotes')) { showLS('assessStatus','error','⚠ Please add interview notes.'); return; }
+  
+  const results = getResults();
+  results.unshift({
+    id: currentId, 
+    name: globalCandidateData.fullName || 'Unknown', 
+    phone: globalCandidateData.phone || '', 
+    role: globalCandidateData.role || '', 
+    rating: v('rating'), 
+    status: v('iStatus'), 
+    date: new Date().toLocaleDateString('en-PK')
+  });
+  saveResults(results);
+
+  showLS('assessStatus','loading','Saving Record...');
+  document.getElementById('saveBtn').disabled = true;
+  
+  setTimeout(() => {
+    saved = true;
+    document.getElementById('assessBadge').textContent = '✓ Saved';
+    document.getElementById('assessBadge').style.color = 'var(--green)';
+    showLS('assessStatus','success',`✓ Record saved for ${globalCandidateData.fullName || currentId}!`);
+  }, 800);
+}
+
+function resetAssess(){
+  currentId = ''; saved = false; globalCandidateData = {};
+  document.getElementById('lookupId').value = '';
+  document.getElementById('candidatePreview').style.display = 'none';
+  document.getElementById('assessCard').style.display = 'none';
+  document.getElementById('saveBtn').disabled = false;
+  
+  document.querySelectorAll('#assessCard input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"]),#assessCard select,#assessCard textarea').forEach(e=>e.value='');
+  document.querySelectorAll('#assessCard .cp').forEach(p=>{p.classList.remove('sel');p.querySelector('input').checked=false;});
+  document.querySelectorAll('.star-btn').forEach(b=>b.classList.remove('lit'));
+  
+  document.getElementById('rating').value = '';
+  document.getElementById('ratingLbl').textContent = 'Click a star to rate';
+  document.getElementById('loadStatus').style.display = 'none';
+  document.getElementById('assessStatus').style.display = 'none';
+  document.getElementById('iDate').value = new Date().toISOString().split('T')[0];
+}
+
+/* ── DASHBOARD RENDERING ── */
+function renderTable(){
+  const results = getResults();
+  const tbody = document.getElementById('tableBody');
+  if(results.length === 0) {
+    tbody.innerHTML = '';
+    document.getElementById('emptyState').style.display = 'block';
+    return;
+  }
+  document.getElementById('emptyState').style.display = 'none';
+  tbody.innerHTML = results.map(r => {
+    let statusClass = 'pending';
+    if(r.status.includes('Selected')) statusClass = 'selected';
+    if(r.status.includes('Rejected')) statusClass = 'rejected';
+    if(r.status.includes('Shortlisted')) statusClass = 'short';
+    if(r.status.includes('hold')) statusClass = 'hold';
+
+    return `<tr>
+      <td><strong style="color:var(--gold);font-family:'Cormorant Garamond',serif;font-size:16px;">${r.id}</strong></td>
+      <td>${r.name||'—'}</td><td>${r.phone||'—'}</td><td>${r.role||'—'}</td>
+      <td style="color:var(--gold);">${r.rating ? '★'.repeat(parseInt(r.rating)) : '-'}</td>
+      <td><span class="badge badge-${statusClass}">${r.status||'—'}</span></td>
+      <td>${r.date||'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function filterTable(q){
+  const rows = document.querySelectorAll('#tableBody tr');
+  const s = q.toLowerCase();
+  rows.forEach(row => { row.style.display = row.textContent.toLowerCase().includes(s) ? '' : 'none'; });
+}
+
+/* ── UI POLISH SCRIPTS ── */
+document.addEventListener('DOMContentLoaded', () => {
+  // CUSTOM CURSOR LOGIC
+  if (window.matchMedia("(pointer: fine)").matches) {
+    const cursor = document.getElementById('customCursor');
+    if (cursor) {
+      cursor.style.display = 'block';
+      
+      document.addEventListener('mousemove', e => {
+        cursor.style.left = e.clientX + 'px';
+        cursor.style.top = e.clientY + 'px';
+      });
+
+      document.querySelectorAll('a, button, input, select, textarea, .cp').forEach(el => {
+        el.addEventListener('mouseenter', () => {
+          cursor.style.opacity = '1';
+          cursor.style.width = '40px';
+          cursor.style.height = '40px';
+          cursor.style.backgroundColor = 'rgba(240,165,0,0.15)';
+        });
+        el.addEventListener('mouseleave', () => {
+          cursor.style.opacity = '0';
+          cursor.style.width = '24px';
+          cursor.style.height = '24px';
+          cursor.style.backgroundColor = 'transparent';
+        });
+      });
+    }
+  }
+});
+</script>
+</body>
+</html>
